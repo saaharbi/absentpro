@@ -33,3 +33,10 @@ yarn-error.log*
 
 # OS
 Thumbs.db
+
+# Local Claude settings
+.claude/settings.local.json
+
+# Nested repositories not included in this project
+/absentpro/
+/sojel-gheyab/
