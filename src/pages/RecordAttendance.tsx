@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { helpers } from '../utils/helpers';
 import { Student, AttendanceRecord, AttendanceStatus } from '../types';
+import SearchFilter from '../components/SearchFilter';
 import '../styles/RecordAttendance.css';
 
 interface AttendanceData {
@@ -18,9 +19,13 @@ function RecordAttendance() {
   const [grade, setGrade] = useState('');
   const [section, setSection] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<AttendanceData>({});
   const [message, setMessage] = useState('');
   const [stats, setStats] = useState({ present: 0, absent: 0, late: 0, notRecorded: 0 });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterSection, setFilterSection] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   const grades = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'];
   const stages = ['الابتدائي', 'المتوسط', 'الثانوي'];
@@ -31,8 +36,36 @@ function RecordAttendance() {
   }, [gender, stage, grade, section]);
 
   useEffect(() => {
+    applyFiltersAndSearch();
+  }, [students, searchQuery, filterSection, filterStatus]);
+
+  useEffect(() => {
     updateStats();
   }, [attendance]);
+
+  const applyFiltersAndSearch = () => {
+    let filtered = students;
+
+    if (searchQuery) {
+      filtered = filtered.filter(student =>
+        student.fullName.includes(searchQuery) ||
+        student.id.includes(searchQuery)
+      );
+    }
+
+    if (filterSection) {
+      filtered = filtered.filter(student => student.section === filterSection);
+    }
+
+    if (filterStatus) {
+      filtered = filtered.filter(student => {
+        const att = attendance[student.id];
+        return att?.status === filterStatus;
+      });
+    }
+
+    setFilteredStudents(filtered);
+  };
 
   const loadStudentsForFilters = () => {
     const filtered = helpers.getStudentsByFilter(gender, stage, grade, section);
@@ -111,11 +144,24 @@ function RecordAttendance() {
 
   const allRecorded = stats.notRecorded === 0 && students.length > 0;
 
+  const dynamicSections = [...new Set(students.map(s => s.section))].sort();
+
   return (
     <div className="record-attendance">
       <h2>تسجيل الغياب اليومي</h2>
 
       {message && <div className="message success">{message}</div>}
+
+      <SearchFilter
+        onSearchChange={setSearchQuery}
+        onSectionChange={setFilterSection}
+        onStatusChange={(status) => {
+          setFilterStatus(status);
+        }}
+        onDateChange={() => {}}
+        sections={dynamicSections}
+        showDateFilter={false}
+      />
 
       <div className="filters-section">
         <div className="filter-group">
@@ -204,10 +250,14 @@ function RecordAttendance() {
         <div className="empty-state">
           <p>لا توجد طلاب في الفصل المختار</p>
         </div>
+      ) : filteredStudents.length === 0 ? (
+        <div className="empty-state">
+          <p>لا توجد نتائج مطابقة للبحث والفلاترة</p>
+        </div>
       ) : (
         <>
           <div className="students-attendance">
-            {students.map(student => (
+            {filteredStudents.map(student => (
               <div key={student.id} className="attendance-card">
                 <h4>{student.fullName}</h4>
                 <div className="attendance-buttons">

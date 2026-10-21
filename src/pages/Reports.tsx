@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { helpers } from '../utils/helpers';
+import SearchFilter from '../components/SearchFilter';
 import '../styles/Reports.css';
 
 interface StudentAbsenceRecord {
@@ -22,10 +23,12 @@ function Reports() {
   const [filterGrade, setFilterGrade] = useState('');
   const [filterSection, setFilterSection] = useState('');
   const [reportData, setReportData] = useState<StudentAbsenceRecord[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredReportData, setFilteredReportData] = useState<StudentAbsenceRecord[]>([]);
 
   const grades = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'];
   const stages = ['الابتدائي', 'المتوسط', 'الثانوي'];
-  const sections = ['أ', 'ب', 'ج', 'د'];
+  const sectionsArray = ['أ', 'ب', 'ج', 'د'];
 
   const generateReport = () => {
     const allStudents = helpers.getStudentsByFilter(filterGender, filterStage, filterGrade, filterSection);
@@ -71,6 +74,14 @@ function Reports() {
     generateReport();
   }, [reportType, selectedDate, startDate, endDate, filterGender, filterStage, filterGrade, filterSection]);
 
+  useEffect(() => {
+    const filtered = reportData.filter(record =>
+      record.studentName.includes(searchQuery) ||
+      record.studentId.includes(searchQuery)
+    );
+    setFilteredReportData(filtered);
+  }, [reportData, searchQuery]);
+
   const handleExportCSV = () => {
     const data = reportData.map(record => ({
       'اسم الطالب': record.studentName,
@@ -90,6 +101,15 @@ function Reports() {
   return (
     <div className="reports">
       <h2>التقارير</h2>
+
+      <SearchFilter
+        onSearchChange={setSearchQuery}
+        onSectionChange={() => {}}
+        onStatusChange={() => {}}
+        onDateChange={() => {}}
+        sections={sectionsArray}
+        showDateFilter={false}
+      />
 
       <div className="report-controls">
         <div className="control-group">
@@ -183,7 +203,7 @@ function Reports() {
           <label>الفصل</label>
           <select value={filterSection} onChange={e => setFilterSection(e.target.value)}>
             <option value="">الكل</option>
-            {sections.map(section => (
+            {sectionsArray.map(section => (
               <option key={section} value={section}>
                 {section}
               </option>
@@ -206,10 +226,14 @@ function Reports() {
           <div className="empty-state">
             <p>لا توجد سجلات غياب في هذه الفترة</p>
           </div>
+        ) : filteredReportData.length === 0 ? (
+          <div className="empty-state">
+            <p>لا توجد نتائج مطابقة للبحث</p>
+          </div>
         ) : (
           <>
             <div className="report-summary">
-              <p>عدد الطلاب الذين لديهم غيابات أو تأخرات: {reportData.length}</p>
+              <p>عدد الطلاب الذين لديهم غيابات أو تأخرات: {filteredReportData.length}</p>
             </div>
 
             <table className="report-table">
@@ -223,7 +247,7 @@ function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {reportData.map((record, idx) => (
+                {filteredReportData.map((record, idx) => (
                   <tr key={record.studentId} className={idx % 2 === 0 ? 'even' : 'odd'}>
                     <td>{record.studentName}</td>
                     <td>
